@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from todo.models import db
 from todo.models.todo import Todo
-from datetime import datetime
+from datetime import datetime, timedelta
 
  
 api = Blueprint('api', __name__, url_prefix='/api/v1') 
@@ -25,9 +25,25 @@ def health():
 @api.route('/todos', methods=['GET']) 
 def get_todos(): 
    todos = Todo.query.all() 
-   result = [] 
-   for todo in todos: 
-      result.append(todo.to_dict()) 
+   result = []
+   completed = None
+   
+   if request.args.get('completed') != None:
+      completed = True if request.args.get('completed') == 'true' else False
+
+   window = request.args.get('window', type=int)
+   
+   for todo in todos:
+      if not request.args:
+         result.append(todo.to_dict()) 
+      else:
+         if completed is not None:
+            if todo.completed == completed:
+               result.append(todo.to_dict())
+         
+         if window is not None:
+            if todo.deadline_at < (datetime.now() + timedelta(days=window)):
+               result.append(todo.to_dict())
    return jsonify(result)
 
 @api.route('/todos/<int:todo_id>', methods=['GET']) 
@@ -38,7 +54,13 @@ def get_todo(todo_id):
    return jsonify(todo.to_dict())
 
 @api.route('/todos/<int:todo_id>', methods=['PUT']) 
-def update_todo(todo_id): 
+def update_todo(todo_id):
+   for key in request.json.keys():
+      if key not in ["title", "id", "description", "completed", "deadline_at"]:
+         return jsonify({'error':'unnecessary extra fields found'}), 400
+      elif key == 'id':
+         return jsonify({'error':'cannot change todo id'}),400
+
    todo = Todo.query.get(todo_id) 
    if todo is None: 
       return jsonify({'error': 'Todo not found'}), 404 
@@ -63,7 +85,14 @@ def delete_todo(todo_id):
 
 @api.route('/todos', methods=['POST']) 
 def create_todo(): 
-   todo = Todo( 
+   if request.json.get('title') is None:
+      return jsonify({'error': 'required title not found'}), 400
+   
+   for key in request.json.keys():
+      if key not in ["title", "id", "description", "completed", "deadline_at"]:
+         return jsonify({'error':'unnecessary extra fields found'}), 400
+
+   todo = Todo(   
       title=request.json.get('title'), 
       description=request.json.get('description'), 
       completed=request.json.get('completed', False), 
