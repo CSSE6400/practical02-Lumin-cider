@@ -16,7 +16,8 @@ Content-Type: application/json
 {
     "title": "Test Todo",
     "description": "This is a test todo",
-    "completed": false
+    "completed": false,
+    "extra": "extra"
 }
 
 ### Update a Todo
@@ -29,3 +30,7 @@ Content-Type: application/json
 
 ### Delete a Todo
 DELETE {{baseUrl}}/api/v1/todos/1
+
+
+
+
